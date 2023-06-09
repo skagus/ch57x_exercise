@@ -19,15 +19,15 @@ uint16 gnTick;
 
 volatile Evts gbAsyncEvt;	// ISR���� �߻��� Event.
 volatile uint16 gnAsyncTick;	// TickISR���� ++
-volatile uint32 gnCurTick;
+//volatile uint32 gnCurTick;
 
 void sched_TickISR(uint8 tag, uint8 result)
 {
 	gnAsyncTick ++;
-	gnCurTick ++;
+//	gnCurTick ++;
 
-	static uint32 nIdx;
-	nIdx++;
+//	static uint32 nIdx;
+//	nIdx++;
 }
 
 /**
@@ -102,7 +102,7 @@ void Sched_Wait(Evts bmEvt, uint16 nTime)
 
 uint16 Sched_GetTick()
 {
-	return gnTick;
+	return gnTick + gnAsyncTick;
 }
 
 void Sched_Register(TaskId nTaskID, Entry task) ///< Register tasks.

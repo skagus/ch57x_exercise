@@ -23,6 +23,8 @@ CSRC =	\
 		src/overlay.c \
 		src/dot_mat.c \
 		src/flash_spi.c \
+		src/crc16.c \
+		src/ymodem.c \
 		rvmsis/core_riscv.c \
 		driver/CH57x_gpio.c \
 		driver/CH57x_uart0.c \

@@ -58,6 +58,19 @@ void led_Cmd(uint8 argc, char* argv[])
 }
 
 
+void LED_Toggle(void)
+{
+	static uint8 snState = 0;
+	snState++;
+	if(snState & 0x1)
+	{
+		GPIOA_SetBits(LED_PIN_CMD);
+	}
+	else
+	{
+		GPIOA_ResetBits(LED_PIN_CMD);
+	}
+}
 
 void LED_Init(void)
 {

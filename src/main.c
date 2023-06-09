@@ -19,6 +19,7 @@
 #include "overlay.h"
 #include "dot_mat.h"
 #include "flash_spi.h"
+#include "ymodem.h"
 
 int main()
 {
@@ -33,7 +34,8 @@ int main()
 	MCU_DbgInit();
 	OVL_Init();
 	FLASH_Init();
-	
+	YM_Init();
+
 	CLI_Printf(gpVersion);
 
 	while(1)
