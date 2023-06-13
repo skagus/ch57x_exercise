@@ -11,10 +11,13 @@
 #define YMODEM_EOT 0x04
 #define YMODEM_C 0x43
 #define YMODEM_CAN 0x18
-#define YMODEM_BS 0x08
+//#define YMODEM_BS 0x08
 
+#define MAX_FILE_NAME_LEN	(128)
+#define DATA_BYTE_SMALL		(128)
+#define DATA_BYTE_BIG		(1024)
 
-#define YMODEM_BUF_LENGTH	(1024 + 5)
+#define YMODEM_BUF_LENGTH	(DATA_BYTE_BIG + 5)
 
 typedef enum
 {
@@ -48,43 +51,43 @@ typedef enum
 
 typedef struct
 {
-	PktState   ePktState;
-	uint16  nDataIdx;
+	PktState	ePktState;
+	uint16		nDataIdx;
 
-	uint8   eResp;		// protocol Response.
-	uint8   seq[2];
-	uint8   *pPayload;
-	uint16  nSizePayload;	///< Payload size (128 | 1024)
-	uint16  nRxCrc;
-	uint8   aRxBuf[YMODEM_BUF_LENGTH];
+	uint8		eResp;		// Protocol Response.
+	uint8		nSeq;		// Seq Number.
+	uint8*		pPayload;
+	uint16		nSizePayload;	///< Payload size (128 | 1024)
+	uint16		nRxCrc;
+	uint8		aRxBuf[YMODEM_BUF_LENGTH];
 } YPacket;
 
 typedef struct
 {
 	YmodemType eType;
-	YMState   eYmState;
-	uint32  nPrvTick;
-	uint32  nTimeOut;	// response timeout.
+	YMState	eYmState;
+	uint32	nPrvTick;
+	uint32	nTimeOut;	// response timeout.
 
-	uint8   szFileName[128];
-	uint32  nFileLen;	// 전송될 파일 크기.
-	uint32  nReceived;	// 현재까지 받은 데이터 양.
+	uint8	szFileName[MAX_FILE_NAME_LEN];
+	uint32	nFileLen;	// 전송될 파일 크기.
+	uint32	nReceived;	// 현재까지 받은 데이터 양.
 
-	uint8_t  *pRxData;
+	uint8*	pRxData;
 
-	YPacket  stRxPkt;
+	YPacket	stRxPkt;
 } ymodem_t;
 
 bool ym_RcvPkt(YPacket *pstPkt, uint8_t nNewData);
 
-void ym_Reset(ymodem_t *p_modem)
+void ym_Reset(ymodem_t *pstModem)
 {
-	p_modem->eYmState = YMODEM_STATE_WAIT_HEAD;
-	p_modem->stRxPkt.ePktState = YMODEM_PACKET_WAIT_FIRST;
-	p_modem->stRxPkt.pPayload = &p_modem->stRxPkt.aRxBuf[3];
-	p_modem->pRxData = &p_modem->stRxPkt.aRxBuf[3];
-	p_modem->nPrvTick = Sched_GetTick();
-	p_modem->nTimeOut = 300;	// 10ms tick --> 3 secs.
+	pstModem->eYmState = YMODEM_STATE_WAIT_HEAD;
+	pstModem->stRxPkt.ePktState = YMODEM_PACKET_WAIT_FIRST;
+	pstModem->stRxPkt.pPayload = &pstModem->stRxPkt.aRxBuf[3];
+	pstModem->pRxData = &pstModem->stRxPkt.aRxBuf[3];
+	pstModem->nPrvTick = Sched_GetTick();
+	pstModem->nTimeOut = 300;	// 10ms tick --> 3 secs.
 }
 
 /*
@@ -96,7 +99,7 @@ bool ym_GetFileInfo(ymodem_t *pstModem)
 	bool bValid = false;
 	uint16_t nBufIdx;
 
-	for (int i = 0; i < 128; i++)
+	for (int i = 0; i < MAX_FILE_NAME_LEN; i++)
 	{
 		pstModem->szFileName[i] = pstModem->stRxPkt.pPayload[i];
 		if (pstModem->szFileName[i] == 0x00)
@@ -109,7 +112,7 @@ bool ym_GetFileInfo(ymodem_t *pstModem)
 
 	if (bValid == true)
 	{
-		for (int i = nBufIdx; i < 128; i++)
+		for (int i = nBufIdx; i < MAX_FILE_NAME_LEN; i++)
 		{
 			if (pstModem->stRxPkt.pPayload[i] == 0x20)
 			{
@@ -150,7 +153,7 @@ bool ym_Rx(ymodem_t *pstModem, uint8* aDataBuf)
 					UART_TxD(YMODEM_NACK);
 					pstModem->eYmState = YMODEM_STATE_WAIT_LAST;
 				}
-				else if (pstModem->stRxPkt.seq[0] == 0x00)
+				else if (pstModem->stRxPkt.nSeq == 0x00)
 				{
 					pstModem->nReceived = 0;
 					ym_GetFileInfo(pstModem);
@@ -172,7 +175,7 @@ bool ym_Rx(ymodem_t *pstModem, uint8* aDataBuf)
 					UART_TxD(YMODEM_NACK);
 					pstModem->eYmState = YMODEM_STATE_WAIT_LAST;
 				}
-				else if (pstModem->stRxPkt.seq[0] == 0x01)
+				else if (pstModem->stRxPkt.nSeq == 0x01)
 				{
 					pstModem->nReceived = 0;
 
@@ -270,13 +273,13 @@ bool ym_RcvPkt(YPacket *pstPkt, uint8 nNewData)
 		case YMODEM_PACKET_WAIT_FIRST:
 			if (nNewData == YMODEM_SOH)
 			{
-				pstPkt->nSizePayload = 128;
+				pstPkt->nSizePayload = DATA_BYTE_SMALL;
 				pstPkt->eResp = nNewData;
 				pstPkt->ePktState = YMODEM_PACKET_WAIT_SEQ1;
 			}
 			if (nNewData == YMODEM_STX)
 			{
-				pstPkt->nSizePayload = 1024;
+				pstPkt->nSizePayload = DATA_BYTE_BIG;
 				pstPkt->eResp = nNewData;
 				pstPkt->ePktState = YMODEM_PACKET_WAIT_SEQ1;
 			}
@@ -293,13 +296,12 @@ bool ym_RcvPkt(YPacket *pstPkt, uint8 nNewData)
 			break;
 
 		case YMODEM_PACKET_WAIT_SEQ1:
-			pstPkt->seq[0] = nNewData;
+			pstPkt->nSeq = nNewData;
 			pstPkt->ePktState = YMODEM_PACKET_WAIT_SEQ2;
 			break;
 
 		case YMODEM_PACKET_WAIT_SEQ2:
-			pstPkt->seq[1] = nNewData;
-			if (pstPkt->seq[0] == (uint8_t)(~nNewData))
+			if (pstPkt->nSeq == (uint8_t)(~nNewData))
 			{
 				pstPkt->nDataIdx = 0;
 				pstPkt->ePktState = YMODEM_PACKET_WAIT_DATA;
