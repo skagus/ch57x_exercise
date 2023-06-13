@@ -28,6 +28,7 @@ CSRC =	\
 		rvmsis/core_riscv.c \
 		driver/CH57x_gpio.c \
 		driver/CH57x_uart0.c \
+		driver/CH57x_uart1.c \
 		driver/CH57x_timer0.c \
 		driver/CH57x_sys.c \
 		driver/CH57x_spi0.c \

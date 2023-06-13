@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include "types.h"
 #include "macro.h"
 #include "CH57x_common.h"
@@ -38,6 +39,25 @@ void UART_Puts(char* szLine)
 void UART_TxD(char nCh)
 {
 	UART0_SendByte(nCh);
+}
+
+void HAL_DbgLog(char* szFmt, ...)
+{
+	char aBuf[64];
+	va_list arg_ptr;
+	va_start(arg_ptr, szFmt);
+	vsprintf(aBuf, szFmt, arg_ptr);
+	va_end(arg_ptr);
+
+	UART1_SendString(aBuf, strlen(aBuf));
+}
+
+void HAL_DbgInit()
+{
+	GPIOA_SetBits(GPIO_Pin_9); // for uart signal level.
+//	GPIOA_ModeCfg(GPIO_Pin_8, GPIO_ModeIN_PU);      // RXD
+	GPIOA_ModeCfg(GPIO_Pin_9, GPIO_ModeOut_PP_5mA); // TXD
+	UART1_DefInit();
 }
 
 void UART_Init(uint32 nBPS)

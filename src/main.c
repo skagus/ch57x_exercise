@@ -26,6 +26,7 @@ int main()
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
 //	DelayMs(1000); // Wait 1 sec.
 
+	HAL_DbgInit();
 	Cbf cbfTick = Sched_Init();
 	TIMER_Init(cbfTick);
 
@@ -37,6 +38,7 @@ int main()
 	YM_Init();
 
 	CLI_Printf(gpVersion);
+	HAL_DbgLog("Hello\r\n");
 
 	while(1)
 	{
