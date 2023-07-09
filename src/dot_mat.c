@@ -1,10 +1,7 @@
-
-#include "CH573SFR.h"
+#include "CH57x_common.h"
 #include "core_riscv.h"
 #include "macro.h"
 #include "sched.h"
-#include "CH57x_gpio.h"
-#include "CH57x_spi.h"
 #include "util.h"
 #include "cli.h"
 
