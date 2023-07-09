@@ -3,6 +3,8 @@
 #include "CH57x_common.h"
 #include "macro.h"
 #include "sched.h"
+#include "util.h"
+#include "cli.h"
 #include "led.h"
 
 #define LED_PIN_CMD			GPIO_Pin_8
@@ -14,6 +16,7 @@ static uint16 gnLedPeriod = 20;
 
 void led_Run(Evts bmEvt)
 {
+	UNUSED(bmEvt);
 	static uint8 nCnt;
 	if(gnLedPeriod > 0)
 	{
@@ -35,7 +38,7 @@ void led_Cmd(uint8 argc, char* argv[])
 {
 	if(2 == argc)
 	{
-		uint32 nIn = CLI_GetInt(argv[1]);
+		uint32 nIn = UT_GetInt(argv[1]);
 		if(0 == nIn)
 		{
 			GPIOA_ResetBits(LED_PIN_CMD);
@@ -51,7 +54,7 @@ void led_Cmd(uint8 argc, char* argv[])
 	}
 	else
 	{
-		CLI_Printf("Number of parameter\r\n");
+		UT_Printf("Number of parameter\r\n");
 	}
 
 	Sched_TrigSyncEvt(BIT(EVT_LED_CMD));

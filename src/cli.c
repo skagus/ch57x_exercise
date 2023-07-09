@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "macro.h"
 #include "sched.h"
+#include "util.h"
 #include "cli.h"
 #include "hal.h"
 //////////////////////////////////
@@ -35,16 +36,16 @@ void cli_CmdHelp(uint8 argc, char* argv[])
 {
 	if(argc > 1)
 	{
-		uint32 nNum = CLI_GetInt(argv[1]);
-		CLI_Printf("help with %08lx\r\n", nNum);
+		uint32 nNum = UT_GetInt(argv[1]);
+		UT_Printf("help with %08lx\n", nNum);
 		char* aCh = (char*)&nNum;
-		CLI_Printf("help with %02X %02X %02X %02X\r\n", aCh[0], aCh[1], aCh[2], aCh[3]);
+		UT_Printf("help with %02X %02X %02X %02X\n", aCh[0], aCh[1], aCh[2], aCh[3]);
 	}
 	else
 	{
 		for(uint8 nIdx = 0; nIdx < gnCmds; nIdx++)
 		{
-			CLI_Printf("%d: %s\r\n", nIdx, gaCmds[nIdx].szCmd);
+			UT_Printf("%d: %s\n", nIdx, gaCmds[nIdx].szCmd);
 		}
 	}
 }
@@ -52,6 +53,8 @@ void cli_CmdHelp(uint8 argc, char* argv[])
 
 void cli_TrigEcall(uint8 argc, char* argv[])
 {
+	UNUSED(argc);
+	UNUSED(argv);
 	RV_ecall(0,0,0,0);
 }
 
@@ -59,7 +62,7 @@ void cli_CmdHistory(uint8 argc, char* argv[])
 {
 	if(argc > 1) // Run the indexed command.
 	{
-		uint8 nSlot = CLI_GetInt(argv[1]);
+		uint8 nSlot = UT_GetInt(argv[1]);
 		if(nSlot < COUNT_LINE_BUF)
 		{
 			if(strlen(gaHistBuf[nSlot]) > 0)
@@ -76,7 +79,7 @@ void cli_CmdHistory(uint8 argc, char* argv[])
 			nIdx = (nIdx + 1) % COUNT_LINE_BUF;
 			if(strlen(gaHistBuf[nIdx]) > 0)
 			{
-				CLI_Printf("%2d> %s\r\n", nIdx, gaHistBuf[nIdx]);
+				UT_Printf("%2d> %s\n", nIdx, gaHistBuf[nIdx]);
 			}
 
 		} while(nIdx != gnPrvHist);
@@ -85,6 +88,8 @@ void cli_CmdHistory(uint8 argc, char* argv[])
 
 void cbf_RxUart(uint8 tag, uint8 result)
 {
+	UNUSED(tag);
+	UNUSED(result);
 	Sched_TrigAsyncEvt(BIT(EVT_UART));
 }
 
@@ -159,7 +164,7 @@ void cli_RunCmd(char* szCmdLine)
 
 	if(false == bExecute)
 	{
-		CLI_Printf("Unknown command: %s\r\n", szCmdLine);
+		UT_Printf("Unknown command: %s\n", szCmdLine);
 	}
 	UART_SetCbf(cbf_RxUart, NULL);
 }
@@ -168,6 +173,7 @@ uint32 gnPrvECall;
 
 void cli_Run(Evts bmEvt)
 {
+	UNUSED(bmEvt);
 	static uint8 nLen = 0;
 	static char aLine[LEN_LINE];
 	char nCh;
@@ -185,12 +191,12 @@ void cli_Run(Evts bmEvt)
 			if(nLen > 0)
 			{
 				aLine[nLen] = 0;
-				UART_Puts("\r\n");
+				UART_Puts("\n");
 				lb_NewEntry(aLine);
 				cli_RunCmd(aLine);
 				nLen = 0;
 			}
-			UART_Puts("\r\n$> ");
+			UART_Puts("\n$> ");
 		}
 		else if(0x7F == nCh) // backspace.
 		{
@@ -202,11 +208,11 @@ void cli_Run(Evts bmEvt)
 		}
 		else if(0x1B == nCh) // Escape sequence.
 		{
-			uint8 nCh2, nCh3;
-			while(0 == UART_RxD((char*)&nCh2));
+			char nCh2, nCh3;
+			while(0 == UART_RxD(&nCh2));
 			if(0x5B == nCh2) // direction.
 			{
-				while(0 == UART_RxD((char*)&nCh3));
+				while(0 == UART_RxD(&nCh3));
 				if(0x41 == nCh3) // up.
 				{
 					nLen = lb_GetNextEntry(false, aLine);
@@ -223,7 +229,7 @@ void cli_Run(Evts bmEvt)
 		}
 		else
 		{
-			CLI_Printf("~ %X\r\n", nCh);
+			UT_Printf("~ %X\n", nCh);
 		}
 	}
 
@@ -231,36 +237,6 @@ void cli_Run(Evts bmEvt)
 }
 
 /////////////////////
-void CLI_Printf(char* szFmt, ...)
-{
-	char aBuf[64];
-	va_list arg_ptr;
-	va_start(arg_ptr, szFmt);
-	vsprintf(aBuf, szFmt, arg_ptr);
-	va_end(arg_ptr);
-	UART_Puts(aBuf);
-}
-
-uint32 CLI_GetInt(char* szStr)
-{
-	uint32 nNum;
-	char* pEnd;
-	uint8 nLen = strlen(szStr);
-	if((szStr[0] == '0') && ((szStr[1] == 'b') || (szStr[1] == 'B'))) // Binary.
-	{
-		nNum = strtoul(szStr + 2, &pEnd, 2);
-	}
-	else
-	{
-		nNum = (uint32)strtoul(szStr, &pEnd, 0);
-	}
-
-	if((pEnd - szStr) != nLen)
-	{
-		nNum = NOT_NUMBER;
-	}
-	return nNum;
-}
 
 void CLI_Register(char* szCmd, CmdHandler *pHandle)
 {
@@ -269,8 +245,12 @@ void CLI_Register(char* szCmd, CmdHandler *pHandle)
 	gnCmds++;
 }
 
+void CLI_RegUartEvt()
+{
+	UART_SetCbf(cbf_RxUart, NULL);
+}
 ///////////////////////
-void CLI_Init()
+void CLI_Init(void)
 {
 	UART_Init(UART_BPS);
 	UART_SetCbf(cbf_RxUart, NULL);

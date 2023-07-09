@@ -5,6 +5,7 @@
 #include "sched.h"
 #include "CH57x_gpio.h"
 #include "CH57x_spi.h"
+#include "util.h"
 #include "cli.h"
 
 #define MAT_CS		(GPIO_Pin_4)
@@ -38,9 +39,9 @@ void dot_Cmd(uint8 argc, char* argv[])
 {
 	if(argc == 3) // dot col val
 	{
-		uint32 nCol = CLI_GetInt(argv[1]);
-		uint32 nVal = CLI_GetInt(argv[2]);
-		CLI_Printf("dot out: %d, %08x\r\n", nCol, nVal);
+		uint32 nCol = UT_GetInt(argv[1]);
+		uint32 nVal = UT_GetInt(argv[2]);
+		UT_Printf("dot out: %d, %08x\r\n", nCol, nVal);
 		dot_SendPair((uint8)nCol, (uint8)nVal);
 	}
 	else if(argc == 2)
@@ -49,7 +50,7 @@ void dot_Cmd(uint8 argc, char* argv[])
 		
 		if(nCmd == 'i')
 		{
-			CLI_Printf("dot initialize\r\n");
+			UT_Printf("dot initialize\r\n");
 			dot_SendPair(MAX7219_TEST, 0x01);  mDelaymS(10);  
 			dot_SendPair(MAX7219_TEST, 0x00);        // Finish test mode.
 			dot_SendPair(MAX7219_DECODE_MODE, 0x00); // Disable BCD mode. 
@@ -59,21 +60,21 @@ void dot_Cmd(uint8 argc, char* argv[])
 		}
 		else if(nCmd == 'f')
 		{
-			CLI_Printf("dot FIFO\r\n");
+			UT_Printf("dot FIFO\r\n");
 			GPIOA_ResetBits(MAT_CS);
 			SPI0_MasterTrans(gaImage, SIZE_FULL);
 			GPIOA_SetBits(MAT_CS);
 		}
 		else if(nCmd == 'd')
 		{
-			CLI_Printf("dot DMA\r\n");
+			UT_Printf("dot DMA\r\n");
 			GPIOA_ResetBits(MAT_CS);
 			SPI0_MasterDMATrans(gaImage, SIZE_FULL);
 			GPIOA_SetBits(MAT_CS);
 		}
 		else if(nCmd == 'c')
 		{
-			CLI_Printf("dot clear\r\n");
+			UT_Printf("dot clear\r\n");
 			for(uint8 nCol = 1; nCol <= 8; nCol++)
 			{
 				dot_SendPair(nCol, 0);
@@ -84,10 +85,11 @@ void dot_Cmd(uint8 argc, char* argv[])
 
 void dot_Run(Evts bmEvt)
 {
+	UNUSED(bmEvt);
 //	Sched_Wait(BIT(EVT_UART) | BIT(EVT_ECALL_DONE), 0);
 }
 
-void DOT_Init()
+void DOT_Init(void)
 {
 	GPIOA_SetBits(MAT_CS);
 	GPIOA_ModeCfg(MAT_CS | MAT_CLK | MAT_DOUT, GPIO_ModeOut_PP_5mA);

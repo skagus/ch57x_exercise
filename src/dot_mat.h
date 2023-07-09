@@ -2,5 +2,5 @@
 
 #include "types.h"
 
-void DOT_Init();
+void DOT_Init(void);
 

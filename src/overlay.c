@@ -1,3 +1,5 @@
+#include <string.h>
+#include "util.h"
 #include "cli.h"
 #include "overlay.h"
 
@@ -15,7 +17,7 @@ __attribute__((section(".ovl0")))
 uint32 OVL0_DoAction()		// Slot 1
 {
 	gnOvl0++;
-	CLI_Printf("In OVL0 : %d\n", gnOvl0);
+	UT_Printf("In OVL0 : %d\n", gnOvl0);
 	return gnOvl0;
 }
 
@@ -23,16 +25,16 @@ uint32 OVL0_DoAction()		// Slot 1
 uint32 gnOvl1 = 10100;
 
 __attribute__((section(".ovl1")))
-uint32 OVL1_Func()
+uint32 OVL1_Func(void)
 {
 	return gnOvl1;
 }
 
 __attribute__((section(".ovl1")))
-uint32 OVL1_DoAction()		// Slot 1
+uint32 OVL1_DoAction(void)		// Slot 1
 {
 	gnOvl1++;
-	CLI_Printf("In OVL1 : %d\n", OVL1_Func());
+	UT_Printf("In OVL1 : %d\n", OVL1_Func());
 	return gnOvl1;
 }
 
@@ -48,27 +50,27 @@ void ovl_Load(uint8 argc, char* argv[])
 {
 	if(argc < 2)
 	{
-		CLI_Printf("%s <address>\r\n", argv[0]);
+		UT_Printf("%s <address>\r\n", argv[0]);
 	}
 	else
 	{
 		uint32 nSlot;
-		nSlot = CLI_GetInt(argv[1]);
+		nSlot = UT_GetInt(argv[1]);
 		OVL_LoadSlot(nSlot);
 		if(0 == nSlot)
 		{
-			CLI_Printf("Call %p\r\n", OVL0_DoAction);
+			UT_Printf("Call %p\r\n", OVL0_DoAction);
 			OVL0_DoAction();
 		}
 		else if(1 == nSlot)
 		{
-			CLI_Printf("Call %p\r\n", OVL1_DoAction);
+			UT_Printf("Call %p\r\n", OVL1_DoAction);
 			OVL1_DoAction();
 		}
 	}
 }
 
-void OVL_Init()
+void OVL_Init(void)
 {
 	CLI_Register("ovl", ovl_Load);
 }

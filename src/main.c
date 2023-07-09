@@ -13,6 +13,8 @@
 #include "CH57x_common.h"
 #include "version.h"
 #include "sched.h"
+#include "hal.h"
+#include "util.h"
 #include "led.h"
 #include "cli.h"
 #include "mcu_dbg.h"
@@ -21,7 +23,7 @@
 #include "flash_spi.h"
 #include "ymodem.h"
 
-int main()
+int main(void)
 {
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
 //	DelayMs(1000); // Wait 1 sec.
@@ -37,8 +39,8 @@ int main()
 	FLASH_Init();
 	YM_Init();
 
-	CLI_Printf(gpVersion);
-	HAL_DbgLog("Hello\r\n");
+	UT_Printf(gpVersion);
+	HAL_DbgLog("Hello\n");
 
 	while(1)
 	{

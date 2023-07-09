@@ -25,6 +25,7 @@ CSRC =	\
 		src/flash_spi.c \
 		src/crc16.c \
 		src/ymodem.c \
+		com/util.c \
 		rvmsis/core_riscv.c \
 		driver/CH57x_gpio.c \
 		driver/CH57x_uart0.c \
@@ -71,7 +72,8 @@ LIB_OPT =	$(patsubst %,-L$(PRJ_TOP)/%,$(PRJ_LIB_DIR)) \
 PRJ_INC = build \
 		com \
 		rvmsis \
-		driver
+		driver \
+		src
 
 # Add absolue path. (ex. c:/lib/inc)
 EXT_INC =
