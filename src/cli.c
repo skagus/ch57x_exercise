@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "macro.h"
-#include "sched.h"
+#include "os.h"
 #include "util.h"
 #include "cli.h"
 #include "hal.h"
@@ -86,11 +86,11 @@ void cli_CmdHistory(uint8 argc, char* argv[])
 	}
 }
 
-void cbf_RxUart(uint8 tag, uint8 result)
+void cbf_RxUart(uint32 tag, uint32 result)
 {
 	UNUSED(tag);
 	UNUSED(result);
-	Sched_TrigAsyncEvt(BIT(EVT_UART));
+	OS_SyncEvt(BIT(EVT_UART));
 }
 
 void lb_NewEntry(char* szCmdLine)
@@ -171,69 +171,71 @@ void cli_RunCmd(char* szCmdLine)
 
 uint32 gnPrvECall;
 
-void cli_Run(Evts bmEvt)
+void cli_Run(void* pParam)
 {
-	UNUSED(bmEvt);
-	static uint8 nLen = 0;
-	static char aLine[LEN_LINE];
+	UNUSED(pParam);
+	uint8 nLen = 0;
+	char aLine[LEN_LINE];
 	char nCh;
 
-	while(UART_RxD(&nCh))
+	while(1)
 	{
-		if (' ' <= nCh && nCh <= '~')
+		while(UART_RxD(&nCh))
 		{
-			UART_TxD(nCh);
-			aLine[nLen] = nCh;
-			nLen++;
-		}
-		else if(('\n' == nCh) || ('\r' == nCh))
-		{
-			if(nLen > 0)
+			if (' ' <= nCh && nCh <= '~')
 			{
-				aLine[nLen] = 0;
-				UART_Puts("\n");
-				lb_NewEntry(aLine);
-				cli_RunCmd(aLine);
-				nLen = 0;
+				UART_TxD(nCh);
+				aLine[nLen] = nCh;
+				nLen++;
 			}
-			UART_Puts("\n$> ");
-		}
-		else if(0x7F == nCh) // backspace.
-		{
-			if(nLen > 0)
+			else if(('\n' == nCh) || ('\r' == nCh))
 			{
-				UART_Puts("\b \b");
-				nLen--;
-			}
-		}
-		else if(0x1B == nCh) // Escape sequence.
-		{
-			char nCh2, nCh3;
-			while(0 == UART_RxD(&nCh2));
-			if(0x5B == nCh2) // direction.
-			{
-				while(0 == UART_RxD(&nCh3));
-				if(0x41 == nCh3) // up.
+				if(nLen > 0)
 				{
-					nLen = lb_GetNextEntry(false, aLine);
-					UART_Puts("\r                          \r->");
-					if(nLen > 0) UART_Puts(aLine);
+					aLine[nLen] = 0;
+					UART_Puts("\n");
+					lb_NewEntry(aLine);
+					cli_RunCmd(aLine);
+					nLen = 0;
 				}
-				else if(0x42 == nCh3) // down.
+				UART_Puts("\n$> ");
+			}
+			else if(0x08 == nCh) // backspace, DEL
+			{
+				if(nLen > 0)
 				{
-					nLen = lb_GetNextEntry(true, aLine);
-					UART_Puts("\r                          \r+>");
-					if(nLen > 0) UART_Puts(aLine);
+					UART_Puts("\b \b");
+					nLen--;
 				}
 			}
+			else if(0x1B == nCh) // Escape sequence.
+			{
+				char nCh2, nCh3;
+				while(0 == UART_RxD(&nCh2));
+				if(0x5B == nCh2) // direction.
+				{
+					while(0 == UART_RxD(&nCh3));
+					if(0x41 == nCh3) // up.
+					{
+						nLen = lb_GetNextEntry(false, aLine);
+						UART_Puts("\r                          \r->");
+						if(nLen > 0) UART_Puts(aLine);
+					}
+					else if(0x42 == nCh3) // down.
+					{
+						nLen = lb_GetNextEntry(true, aLine);
+						UART_Puts("\r                          \r+>");
+						if(nLen > 0) UART_Puts(aLine);
+					}
+				}
+			}
+			else
+			{
+				UT_Printf("~ %X\n", nCh);
+			}
 		}
-		else
-		{
-			UT_Printf("~ %X\n", nCh);
-		}
+		OS_Wait(BIT(EVT_UART), OS_SEC(1));
 	}
-
-	Sched_Wait(BIT(EVT_UART) | BIT(EVT_ECALL_DONE), 0);
 }
 
 /////////////////////
@@ -250,11 +252,12 @@ void CLI_RegUartEvt()
 	UART_SetCbf(cbf_RxUart, NULL);
 }
 ///////////////////////
+#define SIZE_STK	(1024)	// DW.
+static uint32 gaCliStk[SIZE_STK];
 void CLI_Init(void)
 {
-	UART_Init(UART_BPS);
 	UART_SetCbf(cbf_RxUart, NULL);
 	CLI_Register("help", cli_CmdHelp);
 	CLI_Register("hist", cli_CmdHistory);
-	Sched_Register(TID_CONSOLE, cli_Run);
+	OS_CreateTask(cli_Run, gaCliStk + SIZE_STK - 1, NULL, "cli");
 }

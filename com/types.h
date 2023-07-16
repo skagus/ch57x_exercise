@@ -19,7 +19,7 @@ typedef int8_t				int8;
 typedef uint64_t			uint64;
 typedef int64_t				int64;
 
-typedef void(*Cbf)(uint8 nTag, uint8 nValue);
+typedef void(*Cbf)(uint32 nTag, uint32 nValue);
 
 #if !defined(cplusplus)
 typedef uint8               bool;

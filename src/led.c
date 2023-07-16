@@ -2,7 +2,7 @@
 
 #include "CH57x_common.h"
 #include "macro.h"
-#include "sched.h"
+#include "os.h"
 #include "util.h"
 #include "cli.h"
 #include "led.h"
@@ -14,24 +14,27 @@
 
 static uint16 gnLedPeriod = 20;
 
-void led_Run(Evts bmEvt)
+void led_Run(void* pParam)
 {
-	UNUSED(bmEvt);
-	static uint8 nCnt;
-	if(gnLedPeriod > 0)
+	UNUSED(pParam);
+	uint8 nCnt = 0;
+	while(1)
 	{
-		nCnt++;
-		if(0 == (nCnt % 2))
+		if(gnLedPeriod > 0)
 		{
-			GPIOA_SetBits(LED_PIN_BLINK);
+			nCnt++;
+			if(0 == (nCnt % 2))
+			{
+				GPIOA_SetBits(LED_PIN_BLINK);
+			}
+			else
+			{
+				GPIOA_ResetBits(LED_PIN_BLINK);			
+			}
 		}
-		else
-		{
-			GPIOA_ResetBits(LED_PIN_BLINK);			
-		}
-	}
 
-	Sched_Wait(BIT(EVT_LED_CMD), gnLedPeriod);
+		OS_Wait(BIT(EVT_LED_CMD), gnLedPeriod);
+	}
 }
 
 void led_Cmd(uint8 argc, char* argv[])
@@ -57,7 +60,7 @@ void led_Cmd(uint8 argc, char* argv[])
 		UT_Printf("Number of parameter\r\n");
 	}
 
-	Sched_TrigSyncEvt(BIT(EVT_LED_CMD));
+	OS_SyncEvt(BIT(EVT_LED_CMD));
 }
 
 
@@ -75,12 +78,17 @@ void LED_Toggle(void)
 	}
 }
 
+#define SIZE_STK	(1024)	// DW.
+static uint32 gaLedStk[SIZE_STK];
+
 void LED_Init(void)
 {
 	GPIOA_SetBits(LED_PIN_CMD);
 	GPIOA_ModeCfg(LED_PIN_CMD, GPIO_ModeOut_PP_5mA);
-	Sched_Register(TID_LED, led_Run);
+
 	CLI_Register("led", led_Cmd);
+	OS_CreateTask(led_Run, gaLedStk + SIZE_STK - 1, NULL, "led");
+
 //	BUT_AddAction(0, EDGE_RISING | EDGE_FALLING, led_But, 0xFF);
 }
 

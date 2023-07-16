@@ -16,15 +16,11 @@ VER_FILE = version.c
 CSRC =	\
 		src/hal.c \
 		src/main.c \
-		src/sched.c \
+		src/os.c \
 		src/led.c \
 		src/cli.c \
 		src/mcu_dbg.c \
-		src/overlay.c \
-		src/dot_mat.c \
-		src/flash_spi.c \
 		src/crc16.c \
-		src/ymodem.c \
 		com/util.c \
 		rvmsis/core_riscv.c \
 		driver/CH57x_gpio.c \
@@ -34,6 +30,12 @@ CSRC =	\
 		driver/CH57x_sys.c \
 		driver/CH57x_spi0.c \
 		$(VER_FILE)
+
+TAAAMP =	\
+		src/overlay.c \
+		src/dot_mat.c \
+		src/flash_spi.c \
+		src/ymodem.c
 
 CPPSRC =
 
@@ -54,7 +56,8 @@ DEP =	$(OBJ:%.o=%.d)
 
 ################  Define
 DEFINE =
-DEFINE += -DWCH_INT
+#DEFINE += -DWCH_INT
+DEFINE += -D__riscv__
 
 ################  Library directory.
 PRJ_LIB_DIR = driver
@@ -101,10 +104,10 @@ FLAGS += -std=gnu99 # c89, c99, gnu89, gnu99
 FLAGS += -funsigned-char
 FLAGS += -funsigned-bitfields
 FLAGS += -fshort-enums
-FLAGS += -fpack-struct
+#FLAGS += -fpack-struct  # CAUTION: RISC-V can't handle un-aligned load/save.
 FLAGS += -fmessage-length=0
 
-FLAGS += -O1
+FLAGS += -Os
 #FLAGS += -msave-restore 
 FLAGS += -ffunction-sections
 FLAGS += -fdata-sections 
@@ -180,6 +183,14 @@ LDFLAGS += -Xlinker --gc-sections
 LDFLAGS += -Xlinker --print-memory-usage
 LDFLAGS += -march=$(MCU)
 LDFLAGS += --specs=nosys.specs
+#LDFLAGS += --specs=nano.specs
+#LDFLAGS += -mcmodel=medany
+#LDFLAGS += -msmall-data-limit=8
+LDFLAGS += -fmessage-length=0
+LDFLAGS += -ffunction-sections
+LDFLAGS += -fdata-sections
+#LDFLAGS += -fsigned-char
+#LDFLAGS += -fno-common
 ifeq ($(MCU),rv32imac)
 LDFLAGS += -mabi=ilp32
 else

@@ -4,7 +4,7 @@
 #include "macro.h"
 #include "util.h"
 #include "CH57x_common.h"
-#include "sched.h"
+#include "os.h"
 #include "hal.h"
 /**
  * 모든 HW dependancy를 여기에 넣는다.
@@ -93,7 +93,7 @@ __attribute__((section(".highcode")))
 void SW_Handler(void)
 {
 	UART_Puts("In SWH\n");
-	Sched_TrigAsyncEvt(BIT(EVT_ECALL_DONE));
+	OS_AsyncEvt(BIT(EVT_ECALL_DONE));
 }
 
 #if defined(WCH_INT)
@@ -204,23 +204,36 @@ __attribute__((naked))
 __attribute__((interrupt("machine")))
 #endif
 __attribute__((section(".highcode")))
-void EXC_IRQHandler(unsigned nParam0, unsigned nParam1, unsigned nParam2, unsigned nParam3)
+void EXC_IRQHandler(void)
 {
-	unsigned nSrc;
+	uint32 nSrc;
 	asm("csrr %0, mcause":"=r"(nSrc));
+	uint32 nPC;
+	asm("csrr %0, mepc":"=r"(nPC));
+
 	switch(nSrc)
 	{
 		case 0:		// Inst addr misaligned.
 		case 1:		// Inst Access fault.
 		case 2:		// Illegal inst.
 		case 3:		// Break point.
+		{
+			uint8* aInst = (uint8*)nPC;
+			UT_Printf("Inst Fault:%X, PC:%X, Inst:[%X:%X:%X:%X]\n",
+					nSrc, nPC, aInst[0], aInst[1], aInst[2], aInst[3]);
+			while(1);
+			break;
+		}
 		case 4:		// Load addr misaligned.
 		case 5:		// Load access fault.
 		case 6:		// Store/AMO addr misaligned.
 		case 7:		// Store/AMO access fault.
 		default:
 		{
-			UT_Printf("Fault cause:%X\n", nSrc);
+			uint32 nMem;
+			asm("csrr %0, mbadaddr":"=r"(nMem));
+			UT_Printf("Data Fault:%X, PC:%X, Mem:%X\n", nSrc, nPC, nMem);
+			while(1);
 			break;
 		}
 		case 8:		// ecall from U mode.
@@ -230,8 +243,8 @@ void EXC_IRQHandler(unsigned nParam0, unsigned nParam1, unsigned nParam2, unsign
 		{
 			unsigned nPC;
 			asm volatile("csrr %0, mepc":"=r"(nPC));
-			UT_Printf("ECall :%X, P:%X, %X, %X, %X\n",
-						nSrc, nParam0, nParam1, nParam2, nParam3);
+//			UT_Printf("ECall :%X, P:%X, %X, %X, %X\n",
+//						nSrc, nParam0, nParam1, nParam2, nParam3);
 			nPC += 4;  // Inc PC because it is NOT fault.
 			asm volatile("csrw mepc, %0"::"r"(nPC));
 			// WCH Fast interrupt때문에 parameter return은 안됨. 

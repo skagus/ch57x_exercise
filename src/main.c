@@ -12,7 +12,7 @@
 
 #include "CH57x_common.h"
 #include "version.h"
-#include "sched.h"
+#include "os.h"
 #include "hal.h"
 #include "util.h"
 #include "led.h"
@@ -23,28 +23,66 @@
 #include "flash_spi.h"
 #include "ymodem.h"
 
+#define OS_TEST_	(0)
+#if (OS_TEST == 1)
+#define SIZE_STK	(1024)	// DW.
+static uint32 gaT1Stk[SIZE_STK];
+static uint32 gaT2Stk[SIZE_STK];
+
+void t1_Run(void* pParam)
+{
+	UNUSED(pParam);
+	int nIdx = 0;
+	while(1)
+	{
+		UT_Printf("\tT1:%4d\n", nIdx);
+		nIdx++;
+		OS_Idle(OS_SEC(2));
+	}
+}
+
+void t2_Run(void* pParam)
+{
+	UNUSED(pParam);
+	int nIdx = 0;
+	while(1)
+	{
+		UT_Printf("T2:%4d\n", nIdx);
+		nIdx ++;
+		OS_Idle(OS_SEC(3));
+	}
+}
+#endif
+
 int main(void)
 {
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
 //	DelayMs(1000); // Wait 1 sec.
 
 	HAL_DbgInit();
-	Cbf cbfTick = Sched_Init();
+	UART_Init(0);
+	HAL_DbgLog("Hello\n");
+	UT_Printf(gpVersion);
+	
+#if (OS_TEST == 1)
+	Cbf cbfTick = OS_Init();
+	TIMER_Init(cbfTick);
+	OS_CreateTask(t1_Run, gaT1Stk + SIZE_STK - 1, (void*)1, "t1");
+	OS_CreateTask(t2_Run, gaT2Stk + SIZE_STK - 1, (void*)2, "t2");
+	OS_Start();
+#else
+	Cbf cbfTick = OS_Init();
 	TIMER_Init(cbfTick);
 
+	MCU_DbgInit();
 	LED_Init();
 	CLI_Init();
-	MCU_DbgInit();
+#if 0
 	OVL_Init();
 	FLASH_Init();
 	YM_Init();
-
-	UT_Printf(gpVersion);
-	HAL_DbgLog("Hello\n");
-
-	while(1)
-	{
-		Sched_Run();
-	}
+#endif
+	OS_Start();
+#endif
 }
 
