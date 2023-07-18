@@ -8,19 +8,21 @@ MCU = rv32imac
 #MCU =rv64imc
 
 BUILD_STRICT = TRUE
-BUILD_PRINT = TRUE
+BUILD_PRINT = FALSE
 
 VER_FILE = version.c
 ################ source files ##############
 # Source file들은 project TOP 에서의 위치를 나타낸다.
 CSRC =	\
 		src/hal.c \
-		src/main.c \
+		src/overlay.c \
+		src/crc16.c \
+		src/mcu_dbg.c \
 		src/os.c \
 		src/led.c \
 		src/cli.c \
-		src/mcu_dbg.c \
-		src/crc16.c \
+		src/dot_mat.c \
+		src/main.c \
 		com/util.c \
 		rvmsis/core_riscv.c \
 		driver/CH57x_gpio.c \
@@ -30,12 +32,6 @@ CSRC =	\
 		driver/CH57x_sys.c \
 		driver/CH57x_spi0.c \
 		$(VER_FILE)
-
-TAAAMP =	\
-		src/overlay.c \
-		src/dot_mat.c \
-		src/flash_spi.c \
-		src/ymodem.c
 
 CPPSRC =
 

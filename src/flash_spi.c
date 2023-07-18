@@ -401,6 +401,5 @@ void FLASH_Init(void)
 	SPI0_CLKCfg(0xe8);
 
 	CLI_Register("flash", flash_Cmd);
-//	Sched_Register(TID_DOT, dot_Run);
 }
 

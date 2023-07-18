@@ -77,8 +77,10 @@ int main(void)
 	MCU_DbgInit();
 	LED_Init();
 	CLI_Init();
-#if 0
 	OVL_Init();
+	DOT_Init();
+
+#if 0
 	FLASH_Init();
 	YM_Init();
 #endif

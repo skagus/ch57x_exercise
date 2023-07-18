@@ -80,12 +80,6 @@ void dot_Cmd(uint8 argc, char* argv[])
 	}
 }
 
-void dot_Run(Evts bmEvt)
-{
-	UNUSED(bmEvt);
-//	Sched_Wait(BIT(EVT_UART) | BIT(EVT_ECALL_DONE), 0);
-}
-
 void DOT_Init(void)
 {
 	GPIOA_SetBits(MAT_CS);
@@ -94,6 +88,5 @@ void DOT_Init(void)
 	SPI0_CLKCfg(0xe8);
 
 	CLI_Register("dot", dot_Cmd);
-//	Sched_Register(TID_DOT, dot_Run);
 }
 

@@ -16,10 +16,10 @@ struct OS_Info
 	uint32	_nTick;					///< Just tick counter
 	uint32	_nTmpTick;				///< Tick count for async tick up.
 
-	uint32	_aWaitEvt[MAX_TASK];	///< Task가 기다리는 event, wakeup상태에서도 의미있음.
-	int32	_aExpire[MAX_TASK];		///< Remainning tick to ready.(only for tick event)
 	uint32	_bmAsyncEvt;			///< Async event중 처리되지 않은 것.
 
+	uint32	_aWaitEvt[MAX_TASK];	///< Task가 기다리는 event, wakeup상태에서도 의미있음.
+	int32	_aExpire[MAX_TASK];		///< Remainning tick to ready.(only for tick event)
 	Task	_pfTask[MAX_TASK];	///< Task entry.
 	void*	_pParam[MAX_TASK];	///< Task parameter.
 	TCB		_aTCB[MAX_TASK];	///< TCB 상당의 무엇인데, sim에서는 fiber id와 대응됨.
