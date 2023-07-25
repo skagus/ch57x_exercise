@@ -146,8 +146,7 @@ void cli_RunCmd(char* szCmdLine)
 {
 	char* aTok[MAX_ARG_TOKEN];
 //	UART_SetCbf(NULL, NULL);
-	uint8 nCnt = 0;
-	nCnt = cli_Token(aTok, szCmdLine);
+	uint8 nCnt = cli_Token(aTok, szCmdLine);
 	bool bExecute = false;
 	if(nCnt > 0)
 	{
@@ -252,12 +251,12 @@ void CLI_RegUartEvt()
 	UART_SetCbf(cbf_RxUart, NULL);
 }
 ///////////////////////
-#define SIZE_STK	(1024)	// DW.
-static uint32 gaCliStk[SIZE_STK];
+#define STK_SIZE	(256)	// DW.
+static uint32 gaCliStk[STK_SIZE];
 void CLI_Init(void)
 {
 	UART_SetCbf(cbf_RxUart, NULL);
 	CLI_Register("help", cli_CmdHelp);
 	CLI_Register("hist", cli_CmdHistory);
-	OS_CreateTask(cli_Run, gaCliStk + SIZE_STK - 1, NULL, "cli");
+	OS_CreateTask(cli_Run, gaCliStk + STK_SIZE - 1, NULL, "cli");
 }

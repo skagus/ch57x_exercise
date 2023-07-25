@@ -22,6 +22,7 @@ CSRC =	\
 		src/led.c \
 		src/cli.c \
 		src/dot_mat.c \
+		src/ymodem_os.c \
 		src/main.c \
 		com/util.c \
 		rvmsis/core_riscv.c \
@@ -32,6 +33,8 @@ CSRC =	\
 		driver/CH57x_sys.c \
 		driver/CH57x_spi0.c \
 		$(VER_FILE)
+
+#		src/flash_spi.c \
 
 CPPSRC =
 
@@ -131,7 +134,10 @@ CFLAGS  = $(FLAGS)
 CFLAGS += $(DEP_OPT)
 CFLAGS += $(DEFINE)
 CFLAGS += $(INCLUDE)
-
+# CFLAGS += -fstack-usage  # show stack usage for each function.
+CFLAGS += -fcallgraph-info  # make call graph information.
+#CFLAGS += -fdump-tree-optimized #
+#CFLAGS += -fdump-rtl-dfinish  # 
 ################  C++ Options
 CPPFLAGS  = $(FLAGS)
 CPPFLAGS += $(DEP_OPT)
@@ -171,6 +177,7 @@ LDS_OPT = $(patsubst %, -T $(PRJ_TOP)/%, $(LINK_SCRIPT))
 LDFLAGS = -g
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += $(LDS_OPT)
+#LDFLAGS += -fstack-usage
 LDFLAGS += -nostartfiles
 #LDFLAGS += -nodefaultlibs
 #LDFLAGS += -nolibc

@@ -13,17 +13,18 @@ typedef enum
 #define YM_TIMEOUT			(2000)	// 20 secs.
 #define YM_RETRY_PERIOD		(100)	// 1 sec.
 /**
-YModem¿¡ ¹º°¡¸¦ ¿äÃ»ÇÒ ¶§¿¡´Â Handler¸¦ ³Ñ°ÜÁà¾ß ÇÑ´Ù. 
-RXÀÏ¶§ handler´Â. 
+YModemï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Handlerï¿½ï¿½ ï¿½Ñ°ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ´ï¿½. 
+RXï¿½Ï¶ï¿½ handlerï¿½ï¿½. 
 	YS_HEADER --> pBuf: file name, pnBytes: file size.
-	YS_DATA --> pBuf: data, pnBytes: ¼ö½Å data packet size.
-	YS_FAIL, YS_DONE --> parameter ÀÇ¹Ì¾øÀ½
+	YS_DATA --> pBuf: data, pnBytes: ï¿½ï¿½ï¿½ï¿½ data packet size.
+	YS_FAIL, YS_DONE --> parameter ï¿½Ç¹Ì¾ï¿½ï¿½ï¿½
 */
 
 typedef bool (*YmHandle)(uint8* pBuf, uint32* pnBytes, YMState eStep, void* pParam);
 
 typedef struct _YReq
 {
+	bool bReq; // Requested.
 	bool bRx; // TX or RX.
 	YmHandle pfHandle;
 	void* pParam;

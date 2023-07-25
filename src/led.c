@@ -78,8 +78,8 @@ void LED_Toggle(void)
 	}
 }
 
-#define SIZE_STK	(1024)	// DW.
-static uint32 gaLedStk[SIZE_STK];
+#define STK_SIZE	(256)	// DW.
+static uint32 gaLedStk[STK_SIZE];
 
 void LED_Init(void)
 {
@@ -87,7 +87,7 @@ void LED_Init(void)
 	GPIOA_ModeCfg(LED_PIN_CMD, GPIO_ModeOut_PP_5mA);
 
 	CLI_Register("led", led_Cmd);
-	OS_CreateTask(led_Run, gaLedStk + SIZE_STK - 1, NULL, "led");
+	OS_CreateTask(led_Run, gaLedStk + STK_SIZE - 1, NULL, "led");
 
 //	BUT_AddAction(0, EDGE_RISING | EDGE_FALLING, led_But, 0xFF);
 }

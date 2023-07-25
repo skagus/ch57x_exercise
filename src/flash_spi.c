@@ -377,14 +377,14 @@ void flash_Cmd(uint8 argc, char* argv[])
 	else if(nCmd == 'W' && argc >= 3) // Write with Y modem.
 	{
 		gYParam.nAddr = nAddr;
-		YReq stReq = {true, _ProcWrite, (void*)&gYParam};
+		YReq stReq = {bReq:true, bRx:true, pfHandle:_ProcWrite, pParam:(void*)&gYParam};
 		YM_Request(&stReq);
 	}
 	else if(nCmd == 'R' && argc >= 4) // Write with Y modem.
 	{
 		gYParam.nAddr = nAddr;
 		gYParam.nByte = nByte;
-		YReq stReq = {false, _ProcRead, (void*)&gYParam};
+		YReq stReq = {bReq:true, bRx:false, pfHandle:_ProcRead, pParam:(void*)&gYParam};
 		YM_Request(&stReq);
 	}
 	else

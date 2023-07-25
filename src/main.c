@@ -80,10 +80,9 @@ int main(void)
 	OVL_Init();
 	DOT_Init();
 
-#if 0
-	FLASH_Init();
+//	FLASH_Init();
 	YM_Init();
-#endif
+
 	OS_Start();
 #endif
 }
