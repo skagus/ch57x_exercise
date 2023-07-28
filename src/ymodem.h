@@ -6,7 +6,8 @@ typedef enum
 {
 	YS_META,		///< 1st packet. (File name and size, or EOT or end pkt)
 	YS_DATA,		///< Some data received.
-	YS_END
+	YS_END,
+	YS_FAIL,
 } YMState;
 
 

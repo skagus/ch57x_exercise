@@ -10,6 +10,12 @@ MCU = rv32imac
 BUILD_STRICT = TRUE
 BUILD_PRINT = FALSE
 
+ifeq ($(BUILD_PRINT), TRUE)
+ECHO = 
+else
+ECHO = @
+endif
+
 VER_FILE = version.c
 ################ source files ##############
 # Source file들은 project TOP 에서의 위치를 나타낸다.
@@ -91,7 +97,7 @@ INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
 #  -Wa,...:      tell GCC to pass this to the assembler.
 #    -adhlns...: create assembler listing
 FLAGS  = -march=$(MCU)
-ifeq ($(MCU),rv32imac)
+ifeq ($(findstring rv32,$(MCU)),rv32)
 FLAGS += -mabi=ilp32
 else
 FLAGS += -mabi=lp64
@@ -112,7 +118,7 @@ FLAGS += -ffunction-sections
 FLAGS += -fdata-sections 
 #FLAGS += -fno-unit-at-a-time
 #FLAGS += -mshort-calls
-
+FLAGS += -g
 FLAGS += -Wa,-adhlns=$(@:.o=.lst)
 FLAGS += -gdwarf-2
 FLAGS += -Wno-comment
@@ -215,20 +221,6 @@ REMOVE = rm -f
 REMOVEDIR = rm -rf
 COPY = cp
 
-ifeq ($(BUILD_PRINT), TRUE)
-# some trick.
-C_MAKE	= $(CC)
-CPP_MAKE= $(CC)
-ASM_MAKE= $(CC)
-ELF_MAKE= $(CC)
-else
-# some trick.
-C_MAKE	= @$(CC)
-CPP_MAKE= @$(CC)
-ASM_MAKE= @$(CC)
-ELF_MAKE= @$(CC)
-endif
-
 INFO 	= @echo Making: $@
 DIR_CHK = @mkdir -p $(@D)
 
@@ -241,17 +233,17 @@ $(OBJDIR)/%.b.o : $(PRJ_TOP)/%.bin
 $(OBJDIR)/%.c.o : $(PRJ_TOP)/%.c
 	$(INFO)
 	$(DIR_CHK)
-	$(C_MAKE) -c $(CFLAGS) $< -o $@ 
+	$(ECHO)$(CC) -c $(CFLAGS) $< -o $@ 
 
 $(OBJDIR)/%.p.o : $(PRJ_TOP)/%.cpp
 	$(INFO)
 	$(DIR_CHK)
-	$(CPP_MAKE) -c $(CPPFLAGS) $< -o $@ 
+	$(ECHO)$(CC) -c $(CPPFLAGS) $< -o $@ 
 
 $(OBJDIR)/%.s.o : $(PRJ_TOP)/%.S
 	$(INFO)
 	$(DIR_CHK)
-	$(ASM_MAKE) -c $(ASFLAGS) $< -o $@
+	$(ECHO)$(CC) -c $(ASFLAGS) $< -o $@
 
 ################### File Creation #################
 all: elf bin lst hex size
@@ -263,32 +255,32 @@ $(PRJ_TOP)/$(VER_FILE):
 %.elf: $(OBJ)
 	$(INFO)
 	$(DIR_CHK)
-	$(ELF_MAKE) $(LDFLAGS) $^ $(LIB_OPT) -o $@ 
+	$(ECHO)$(CC) $(LDFLAGS) $^ $(LIB_OPT) -o $@ 
 
 %.hex: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(OBJCOPY) -O ihex  $< $@
+	$(ECHO)$(OBJCOPY) -O ihex  $< $@
 
 %.bin: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(OBJCOPY) -O binary $< $@
+	$(ECHO)$(OBJCOPY) -O binary $< $@
 
 %.lss: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(OBJDUMP) -h -S -z $< > $@
+	$(ECHO)$(OBJDUMP) -h -S -z $< > $@
 
 %.sym: %.elf
 	$(INFO)
 	$(DIR_CHK)
-	$(NM) -n $< > $@
+	$(ECHO)$(NM) -n $< > $@
 
 %.a: $(OBJ)
 	$(INFO)
 	$(DIR_CHK)
-	$(AR) $@ $^
+	$(ECHO)$(AR) $@ $^
 
 ################ Actions.
 TARGET_ALL=	$(TARGET).elf $(TARGET).a \
@@ -305,12 +297,13 @@ bin: $(TARGET).bin $(TARGET).hex
 lst: $(TARGET).lss $(TARGET).sym
 
 size: $(TARGET).elf
+	$(INFO)
 	@$(SIZE) --format=gnu $<
 	@$(SIZE) --format=sysv --radix=16 --common $<
 
 # Display compiler version information.
 gccversion : 
-	$(CC) --version
+	$(ECHO)$(CC) --version
 
 clean:
 	$(REMOVE) $(TARGET).elf $(TARGET).a \

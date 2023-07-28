@@ -23,8 +23,9 @@
 #define MAX_FILE_NAME_LEN	(128)
 #define DATA_BYTE_SMALL		(128)
 #define DATA_BYTE_BIG		(1024)
-#define EXTRA_SIZE			(5)
-#define YMODEM_BUF_LENGTH	(DATA_BYTE_BIG + EXTRA_SIZE)
+#define YMODEM_HEAD_SIZE	(3)
+#define YMODEM_TAIL_SIZE	(2)
+#define YMODEM_BUF_LENGTH	(DATA_BYTE_BIG + YMODEM_HEAD_SIZE + YMODEM_TAIL_SIZE)
 
 #define DBG_YM(...)			HAL_DbgLog(__VA_ARGS__)
 
@@ -79,7 +80,7 @@ static bool _WaitRx(uint8* pnCh)
 	return false;
 }
 
-static void _EmptyRxQ()
+static void _EmptyRxQ(void)
 {
 	char nNewData;
 	while(UART_RxD(&nNewData));
@@ -100,9 +101,8 @@ static void _TxHost(uint32 nCode)
 bool ym_GetFileInfo(uint8* szFileName, uint32* pnFileLen, uint8* pData)
 {
 	uint32 nLen = strlen((char*)pData) + 1; // including \0
-	strncpy(szFileName, (char*)pData, nLen);
+	strncpy((char*)szFileName, (const char*)pData, (size_t)nLen);
 	*pnFileLen = (uint32)strtoul((char*)(pData + nLen), (char **)NULL, (int)0);
-	DBG_YM("File:%s(Len:%d),", szFileName, *pnFileLen);
 	return true;
 }
 
@@ -113,9 +113,10 @@ bool ym_GetFileInfo(uint8* szFileName, uint32* pnFileLen, uint8* pData)
 */
 YRet ym_RcvPkt(uint8* pData, uint32* pnLen, uint8* pnSeq)
 {
-	uint8 nNewData;
-	uint32 nDataLen;
 	uint8 nSeq;
+	uint8 nNewData = 0;
+	uint32 nDataLen;
+	DBG_YM("Pkt\n");
 
 	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
 	if (nNewData == YMODEM_SOH)
@@ -147,7 +148,8 @@ YRet ym_RcvPkt(uint8* pData, uint32* pnLen, uint8* pnSeq)
 	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
 	nSeq = nNewData;
 	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-	if(nSeq != ~nNewData) return YR_ERROR;
+	nNewData = ~nNewData;
+	if(nNewData != nSeq) return YR_ERROR;
 
 	// Data RCV.
 	for(uint32 nByte = 0; nByte < nDataLen; nByte++)
@@ -177,23 +179,36 @@ YRet ym_RcvPkt(uint8* pData, uint32* pnLen, uint8* pnSeq)
 /**
  * return true if All sequence is done.l
 */
-YRet ym_Rx(YReq* pReq, uint8* pData)
+YRet ym_Rx(uint8* pData, YmHandle pfHandle, void* pParam)
 {
-	uint8 nNewData;
 	uint8 nSeq;
 	uint32 nFileLen;
 	uint32 nPktLen;
 	YRet eRet;
+	uint32 nTry = 5;
+	DBG_YM("RX start\n");
 
-	_TxHost(YMODEM_C);	// Start Xfer.
-	eRet = ym_RcvPkt(pData, &nPktLen, &nSeq);
-	if(YR_DONE != eRet) return eRet;
+	do
+	{
+		_TxHost(YMODEM_C);	// Start Xfer.
+		eRet = ym_RcvPkt(pData, &nPktLen, &nSeq);
+		if(YR_DONE == eRet)
+		{
+			break;
+		}
+	} while((nTry-- > 0) && (YR_TIMEOUT == eRet));
+	if(YR_DONE != eRet)
+	{
+		goto ERROR;
+	}
 
 	uint8 szFileName[128];
 	ym_GetFileInfo(szFileName, &nFileLen, pData);
-	if(NULL != pReq->pfHandle)
+	DBG_YM("File:%s(Len:%d)\n", szFileName, nFileLen);
+
+	if(NULL != pfHandle)
 	{
-		pReq->pfHandle((uint8*)szFileName, &nFileLen, YS_META, pReq->pParam);
+		pfHandle((uint8*)szFileName, &nFileLen, YS_META, pParam);
 	}
 	_TxHost((uint8)YMODEM_ACK);
 
@@ -202,36 +217,39 @@ YRet ym_Rx(YReq* pReq, uint8* pData)
 	while(nRestLen > 0)
 	{
 		eRet = ym_RcvPkt(pData, &nPktLen, &nSeq);
-		if(YR_DONE != eRet) return eRet;
-
-		if(NULL != pReq->pfHandle)
+		if(YR_DONE != eRet) goto ERROR;
+		uint32 nRcvLen = (nRestLen < nPktLen) ? nRestLen : nPktLen;
+		if(NULL != pfHandle)
 		{
-			pReq->pfHandle(pData, nPktLen, YS_DATA, pReq->pParam);
+			pfHandle(pData, &nRcvLen, YS_DATA, pParam);
 		}
-		nRestLen -= (nRestLen < nPktLen) ? nRestLen : nPktLen;
+		nRestLen -= nRcvLen;
 		_TxHost((uint8)YMODEM_ACK);
 	}
 
 	eRet = ym_RcvPkt(pData, &nPktLen, &nSeq);
-	if(YR_EOT != eRet) return YR_ERROR;
+	if(YR_EOT != eRet) goto ERROR;
 
 	_TxHost(YMODEM_NACK);
 	eRet = ym_RcvPkt(pData, &nPktLen, &nSeq);
-	if(YR_EOT != eRet) return YR_ERROR;
+	if(YR_EOT != eRet) goto ERROR;
 
 	_TxHost(YMODEM_ACK);
 	_TxHost(YMODEM_C);
 	eRet = ym_RcvPkt(pData, &nPktLen, &nSeq);
-	if(YR_DONE != eRet) return eRet;
-	if(0 != pData[0]) return YR_ERROR;
+	if((YR_DONE != eRet) || (0 != pData[0])) goto ERROR;
 
 	_TxHost(YMODEM_ACK);
+	pfHandle(NULL, NULL, YS_END, pParam);
+	return eRet;
 
-	return YR_DONE;
+ERROR:
+	pfHandle(NULL, NULL, YS_FAIL, pParam);
+	return YR_ERROR;
 }
 
 
-uint32 _SendMeta(uint8* pBase, YmHandle pfTxHandle, void* pParam)
+void _SendMeta(uint8* pBase, uint32 nLen)
 {
 	DBG_YM("First->\n");
 	uint8* pData = pBase;
@@ -239,8 +257,6 @@ uint32 _SendMeta(uint8* pBase, YmHandle pfTxHandle, void* pParam)
 	*pData = 0; pData++;
 	*pData = 0xFF; pData++;
 
-	uint32 nLen;
-	pfTxHandle(pData, (uint32*)&nLen, YS_META, pParam);	// Get header.
 	uint32 nSizeOff = strlen((char*)pData) + 1;
 	sprintf((char*)(pData + nSizeOff), "%d", (int)nLen);
 	uint16 nCRC = UT_Crc16(pData, DATA_BYTE_SMALL);
@@ -248,26 +264,24 @@ uint32 _SendMeta(uint8* pBase, YmHandle pfTxHandle, void* pParam)
 	*pData =(nCRC >> 8); pData++;
 	*pData =(nCRC & 0xFF);
 
-	UART0_SendString(pBase, DATA_BYTE_SMALL + EXTRA_SIZE);
-	return nLen;
+	UART0_SendString(pBase, DATA_BYTE_SMALL + YMODEM_HEAD_SIZE + YMODEM_TAIL_SIZE);
 }
 
-void _SendData(uint8* pBase, YmHandle pfTxHandle, uint8 nSeqNo, void* pParam)
+void _SendData(uint8* pBase, uint32 nSeqNo, uint32 nLen)
 {
+	UNUSED(nLen);
 	DBG_YM("Data(%d) ->\n", nSeqNo);
 
 	uint8* pData = pBase;
 	*pData = YMODEM_STX; pData++;
 	*pData = nSeqNo; pData++;
 	*pData = ~nSeqNo; pData++;
-	uint32 nThisLen = DATA_BYTE_BIG;
-	pfTxHandle(pData, &nThisLen, YS_DATA, pParam); // Get data.
 	uint16 nCRC = UT_Crc16(pData, DATA_BYTE_BIG);
 	pData += DATA_BYTE_BIG;
 	*pData =(nCRC >> 8); pData++;
 	*pData =(nCRC & 0xFF);
 
-	UART0_SendString(pBase, DATA_BYTE_BIG + EXTRA_SIZE);
+	UART0_SendString(pBase, DATA_BYTE_BIG + YMODEM_HEAD_SIZE + YMODEM_TAIL_SIZE);
 }
 
 void _SendNull(uint8* pBase)
@@ -282,53 +296,63 @@ void _SendNull(uint8* pBase)
 	pData += DATA_BYTE_SMALL;
 	*pData =(nCRC >> 8); pData++;
 	*pData =(nCRC & 0xFF);
-	UART0_SendString(pBase, DATA_BYTE_SMALL + EXTRA_SIZE);
+	UART0_SendString(pBase, DATA_BYTE_SMALL + YMODEM_HEAD_SIZE + YMODEM_TAIL_SIZE);
 }
 
 /**
  * the size of aBuf >= MAX packet size.
 */
-YRet ym_Tx(YReq* pReq, uint8* aBuf)
+YRet ym_Tx(uint8* aBuf, YmHandle pfTxHandle, void* pParam)
 {
-	UT_Printf("Data to Device to Host\n");
+	DBG_YM("YM TX\n");
+	uint32 nRetry = 10;
 	uint8 nNewData;
-
-	DBG_YM("Empty Rcv\n");
 	_EmptyRxQ();
 
-	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-	if(YMODEM_C != nNewData) return YR_ERROR;
-	DBG_YM("Start\n");
+	while(nRetry-- > 0)
+	{
+		bool bRx = _WaitRx(&nNewData);
+		if(bRx)
+		{
+ 			if(YMODEM_C == nNewData) break;
+			else goto ERROR;
+		}
+	}
 
-	uint32 nLen = _SendMeta(aBuf, pReq->pfHandle, pReq->pParam);
+	uint32 nFileLen;
+	pfTxHandle(aBuf + YMODEM_HEAD_SIZE, (uint32*)&nFileLen, YS_META, pParam);	// Get header.
 
-	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-	if(YMODEM_ACK != nNewData) return YR_ERROR;
+	_SendMeta(aBuf, nFileLen);
+
+	if(false == _WaitRx(&nNewData)) goto ERROR;
+	if(YMODEM_ACK != nNewData) goto ERROR;
 	DBG_YM("1st ACK\n");
 
-	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-	if(YMODEM_C != nNewData) return YR_ERROR;
+	if(false == _WaitRx(&nNewData)) goto ERROR;
+	if(YMODEM_C != nNewData) goto ERROR;
 	DBG_YM("1st C\n");
 
-	uint8 nCntPkt = nLen / 1024;
+	uint8 nCntPkt = nFileLen / 1024;
 	uint8 nSeq = 0;
 	while(nSeq < nCntPkt)
 	{
 		nSeq++;
-		_SendData(aBuf, pReq->pfHandle, nSeq, pReq->pParam);
-		if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-		if(YMODEM_ACK != nNewData) return YR_ERROR;
+		uint32 nLen = DATA_BYTE_BIG;
+		pfTxHandle(aBuf + YMODEM_HEAD_SIZE, (uint32*)&nLen, YS_DATA, pParam);	// Get header.
+		_SendData(aBuf, nSeq, nLen);
+		if(false == _WaitRx(&nNewData)) goto ERROR;
+		if(YMODEM_ACK != nNewData) goto ERROR;
 		DBG_YM("Data Ack %d\n", nSeq);
 	}
 
 	_TxHost(YMODEM_EOT);
-	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-	if(YMODEM_NACK != nNewData) return YR_ERROR;
+	if(false == _WaitRx(&nNewData))goto ERROR;
+	if(YMODEM_NACK != nNewData)goto ERROR;
 	DBG_YM("EOT NACK\n");
 
 	_TxHost(YMODEM_EOT);
-	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
-	if(YMODEM_NACK != nNewData) return YR_ERROR;
+	if(false == _WaitRx(&nNewData)) goto ERROR;
+	if(YMODEM_ACK != nNewData) goto ERROR;
 	DBG_YM("EOT ACK\n");
 
 	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
@@ -338,7 +362,15 @@ YRet ym_Tx(YReq* pReq, uint8* aBuf)
 	_SendNull(aBuf);
 	if(false == _WaitRx(&nNewData)) return YR_TIMEOUT;
 	if(YMODEM_ACK != nNewData) return YR_ERROR;
-	DBG_YM("END ACK\n");
+	DBG_YM("END TX\n");
+
+	pfHandle(NULL, NULL, YS_END, pParam);
+	return YR_DONE;
+
+ERROR:
+	DBG_YM("ERROR\n");
+	pfHandle(NULL, NULL, YS_FAIL, pParam);
+	return YR_ERROR;
 }
 
 
@@ -348,21 +380,26 @@ bool _RxHandle(uint8 *pBuf, uint32 *pnBytes, YMState eStep, void *pParam)
 
 	switch (eStep)
 	{
-	case YS_META:
-	{
-		DBG_YM("H:%s, %d\n", pBuf, *pnBytes); // File name and File Length.
-		break;
-	}
-	case YS_DATA:
-	{
-		DBG_YM("D:%X, %d\n", pBuf, *pnBytes);
-		break;
-	}
-	default:
-	{
-		DBG_YM("?:%X, %X\n", pBuf, pnBytes);
-		break;
-	}
+		case YS_META:
+		{
+			DBG_YM("H:%s, %d\n", pBuf, *pnBytes); // File name and File Length.
+			break;
+		}
+		case YS_DATA:
+		{
+			DBG_YM("D:%X, %d\n", *((uint32*)pBuf), *pnBytes);
+			break;
+		}
+		case YS_END:
+		{
+			DBG_YM("END\n");
+			break;
+		}
+		default:
+		{
+			DBG_YM("?:%X, %X\n", *((uint32*)pBuf), *pnBytes);
+			break;
+		}
 	}
 	return true;
 }
@@ -450,15 +487,14 @@ void ym_Run(void* pParam)
 			UART_SetCbf(cbf_RxUartYm, NULL);
 			if(pReq->bRx)
 			{
-				ym_Rx(pReq, gaData);
+				ym_Tx(gaData, pReq->pfHandle, pReq->pParam);
 			}
 			else
 			{
-				ym_Tx(pReq, gaData);
+				ym_Tx(gaData, pReq->pfHandle, pReq->pParam);
 			}
 
 			pReq->bReq = false;
-			pReq->pfHandle(NULL, NULL, YS_END, pReq->pParam);
 			CLI_RegUartEvt();
 		}
 		OS_SyncEvt(BIT(EVT_YMODEM));
@@ -471,6 +507,7 @@ bool YM_Request(YReq* pstReq)
 	if(true != gstReq.bReq)
 	{
 		gstReq = *pstReq;
+		gstReq.bReq = true;
 		OS_SyncEvt(BIT(EVT_YMODEM)); // to start YModem.
 		return true;
 	}
