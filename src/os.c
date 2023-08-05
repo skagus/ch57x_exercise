@@ -1,4 +1,4 @@
-﻿#include <string.h>
+#include <string.h>
 #include "os.h"
 
 #if (1) // defined(__riscv__)
