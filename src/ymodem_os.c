@@ -364,12 +364,12 @@ YRet ym_Tx(uint8* aBuf, YmHandle pfTxHandle, void* pParam)
 	if(YMODEM_ACK != nNewData) return YR_ERROR;
 	DBG_YM("END TX\n");
 
-	pfHandle(NULL, NULL, YS_END, pParam);
+	pfTxHandle(NULL, NULL, YS_END, pParam);
 	return YR_DONE;
 
 ERROR:
 	DBG_YM("ERROR\n");
-	pfHandle(NULL, NULL, YS_FAIL, pParam);
+	pfTxHandle(NULL, NULL, YS_FAIL, pParam);
 	return YR_ERROR;
 }
 

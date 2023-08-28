@@ -4,7 +4,7 @@ PRJ_TOP = ..
 TARGET = exec
 OBJDIR = obj
 
-MCU = rv32imac
+MCU = rv32imac_zicsr
 #MCU =rv64imc
 
 BUILD_STRICT = TRUE
@@ -97,11 +97,8 @@ INCLUDE =	$(patsubst %,-I$(PRJ_TOP)/%,$(PRJ_INC)) \
 #  -Wa,...:      tell GCC to pass this to the assembler.
 #    -adhlns...: create assembler listing
 FLAGS  = -march=$(MCU)
-ifeq ($(findstring rv32,$(MCU)),rv32)
 FLAGS += -mabi=ilp32
-else
-FLAGS += -mabi=lp64
-endif
+#FLAGS += -mabi=lp64
 FLAGS += -mcmodel=medany
 FLAGS += -msmall-data-limit=8
 FLAGS += -std=gnu99 # c89, c99, gnu89, gnu99
@@ -200,21 +197,20 @@ LDFLAGS += -ffunction-sections
 LDFLAGS += -fdata-sections
 #LDFLAGS += -fsigned-char
 #LDFLAGS += -fno-common
-ifeq ($(MCU),rv32imac)
 LDFLAGS += -mabi=ilp32
-else
-LDFLAGS += -mabi=lp64
-endif
+#LDFLAGS += -mabi=lp64
 ################### Action #################
 # add @ for silent.
-GNU_PRIFIX = riscv-none-embed-
+ifeq ($(GNU_PREFIX),)
+	GNU_PREFIX = riscv-none-sss-
+endif
 
-CC 		= $(GNU_PRIFIX)gcc
-OBJCOPY	= $(GNU_PRIFIX)objcopy
-OBJDUMP	= $(GNU_PRIFIX)objdump
-SIZE	= $(GNU_PRIFIX)size
-AR		= $(GNU_PRIFIX)ar rcs
-NM		= $(GNU_PRIFIX)nm
+CC 		= $(GNU_PREFIX)gcc
+OBJCOPY	= $(GNU_PREFIX)objcopy
+OBJDUMP	= $(GNU_PREFIX)objdump
+SIZE	= $(GNU_PREFIX)size
+AR		= $(GNU_PREFIX)ar rcs
+NM		= $(GNU_PREFIX)nm
 
 SHELL = sh
 REMOVE = rm -f
