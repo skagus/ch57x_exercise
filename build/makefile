@@ -5,6 +5,7 @@ TARGET = exec
 OBJDIR = obj
 
 MCU = rv32imac_zicsr
+#MCU = rv32imac_zicsr_zba_zbb_zbc_zbs  # B extension isn't support.
 #MCU =rv64imc
 
 BUILD_STRICT = TRUE
@@ -110,6 +111,7 @@ FLAGS += -fshort-enums
 FLAGS += -fmessage-length=0
 
 FLAGS += -Os
+FLAGS += -flto
 #FLAGS += -msave-restore 
 FLAGS += -ffunction-sections
 FLAGS += -fdata-sections 
@@ -180,13 +182,14 @@ LDS_OPT = $(patsubst %, -T $(PRJ_TOP)/%, $(LINK_SCRIPT))
 LDFLAGS = -g
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += $(LDS_OPT)
-#LDFLAGS += -fstack-usage
+LDFLAGS += -fstack-usage
 LDFLAGS += -nostartfiles
 #LDFLAGS += -nodefaultlibs
-#LDFLAGS += -nolibc
+LDFLAGS += -nolibc
 #LDFLAGS += -nostdlib
-LDFLAGS += -Xlinker --gc-sections
-LDFLAGS += -Xlinker --print-memory-usage
+LDFLAGS += -Wl,--gc-sections
+#LDFLAGS += -Wl,--print-gc-sections
+LDFLAGS += -Wl,--print-memory-usage
 LDFLAGS += -march=$(MCU)
 LDFLAGS += --specs=nosys.specs
 #LDFLAGS += --specs=nano.specs
@@ -243,6 +246,11 @@ $(OBJDIR)/%.s.o : $(PRJ_TOP)/%.S
 
 ################### File Creation #################
 all: elf bin lst hex size
+
+clean: clean_obj clean_target
+
+relink: clean_target elf bin lst hex size
+
 
 $(PRJ_TOP)/$(VER_FILE):
 	$(INFO)
@@ -301,11 +309,13 @@ size: $(TARGET).elf
 gccversion : 
 	$(ECHO)$(CC) --version
 
-clean:
+clean_target:
 	$(REMOVE) $(TARGET).elf $(TARGET).a \
 			$(TARGET).hex $(TARGET).bin \
 			$(TARGET).lss $(TARGET).sym \
 			$(TARGET).map
+
+clean_obj:
 	$(REMOVEDIR) $(OBJDIR)
 
 # Include the dependency files.

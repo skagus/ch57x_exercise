@@ -23,13 +23,13 @@
 #include "flash_spi.h"
 #include "ymodem.h"
 
-#define OS_TEST_	(0)
-#if (OS_TEST == 1)
+#define OS_TEST		(0)
+#if (1) // OS_TEST == 1)
 #define SIZE_STK	(1024)	// DW.
 static uint32 gaT1Stk[SIZE_STK];
 static uint32 gaT2Stk[SIZE_STK];
 
-void t1_Run(void* pParam)
+static void t1_Run(void* pParam)
 {
 	UNUSED(pParam);
 	int nIdx = 0;
@@ -41,7 +41,7 @@ void t1_Run(void* pParam)
 	}
 }
 
-void t2_Run(void* pParam)
+static void t2_Run(void* pParam)
 {
 	UNUSED(pParam);
 	int nIdx = 0;
@@ -51,6 +51,16 @@ void t2_Run(void* pParam)
 		nIdx ++;
 		OS_Idle(OS_SEC(3));
 	}
+}
+#endif
+
+#if 0
+void asmTest()  // B extension support.
+{
+	__asm("andn   a4, a1, a2\n");
+	__asm("clmulh a4, a1, a2\n");
+	__asm("bclr  a4, a1, a2\n");
+	__asm("sh1add a4, a1, a2\n");
 }
 #endif
 
