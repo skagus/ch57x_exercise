@@ -6,7 +6,7 @@
  * Description        : 친콰쇗휭HID구
  *********************************************************************************
  * Copyright (c) 2021 Nanjing Qinheng Microelectronics Co., Ltd.
- * Attention: This software (modified or not) and binary are used for 
+ * Attention: This software (modified or not) and binary are used for
  * microcontroller manufactured by Nanjing Qinheng Microelectronics.
  *******************************************************************************/
 
@@ -33,7 +33,7 @@ static void t1_Run(void* pParam)
 {
 	UNUSED(pParam);
 	int nIdx = 0;
-	while(1)
+	while (1)
 	{
 		UT_Printf("\tT1:%4d\n", nIdx);
 		nIdx++;
@@ -45,10 +45,10 @@ static void t2_Run(void* pParam)
 {
 	UNUSED(pParam);
 	int nIdx = 0;
-	while(1)
+	while (1)
 	{
 		UT_Printf("T2:%4d\n", nIdx);
-		nIdx ++;
+		nIdx++;
 		OS_Idle(OS_SEC(3));
 	}
 }
@@ -67,13 +67,13 @@ void asmTest()  // B extension support.
 int main(void)
 {
 	SetSysClock(CLK_SOURCE_PLL_60MHz);
-//	DelayMs(1000); // Wait 1 sec.
+	//	DelayMs(1000); // Wait 1 sec.
 
 	HAL_DbgInit();
 	UART_Init(0);
 	HAL_DbgLog("Hello\n");
-	UT_Printf(gpVersion);
-	
+	UT_Printf(VERSION);
+
 #if (OS_TEST == 1)
 	Cbf cbfTick = OS_Init();
 	TIMER_Init(cbfTick);
@@ -90,7 +90,7 @@ int main(void)
 	OVL_Init();
 	DOT_Init();
 
-//	FLASH_Init();
+	//	FLASH_Init();
 	YM_Init();
 
 	OS_Start();

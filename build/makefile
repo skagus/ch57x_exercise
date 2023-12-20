@@ -11,15 +11,16 @@ MCU = rv32imac_zicsr
 BUILD_STRICT = TRUE
 BUILD_PRINT = FALSE
 
-OPTI = -O1 -flto
-VER_STRING = $$(date +%Y%m%d_%H%M%S)_$(OPTI)
+OPTI = -O1
+VER_STRING = $$(date_time)_$(OPTI)
 
 LINK_SCRIPT = startup/link.ld
 
 ################  Define
-DEFINE =
-#DEFINE += -DWCH_INT
-DEFINE += -D__riscv__
+DEFINE = \
+	__riscv__
+
+#WCH_INT
 
 ################  Library directory.
 PRJ_LIB_DIR = driver

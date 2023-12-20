@@ -19,6 +19,8 @@ LST =	$(OBJ:%.o=%.lst)
 
 DEP =	$(OBJ:%.o=%.d)
 
+DEF_OPT = $(patsubst %,-D%,$(DEFINE))
+
 LIB_OPT =	$(patsubst %,-L$(PRJ_TOP)/%,$(PRJ_LIB_DIR)) \
 			$(patsubst %,-L%,$(EXT_LIB_DIR)) \
 			$(patsubst %,-l%,$(LIB_FILE))
@@ -72,7 +74,7 @@ endif
 ################  C Options
 CFLAGS  = $(FLAGS)
 CFLAGS += $(DEP_FLAGS)
-CFLAGS += $(DEFINE)
+CFLAGS += $(DEF_OPT)
 CFLAGS += $(INCLUDE)
 # CFLAGS += -fstack-usage  # show stack usage for each function.
 CFLAGS += -fcallgraph-info  # make call graph information.
@@ -81,7 +83,7 @@ CFLAGS += -fcallgraph-info  # make call graph information.
 ################  C++ Options
 CPPFLAGS  = $(FLAGS)
 CPPFLAGS += $(DEP_FLAGS)
-CPPFLAGS += $(DEFINE)
+CPPFLAGS += $(DEF_OPT)
 CPPFLAGS += $(INCLUDE)
 
 ################  Assembler Options
@@ -95,7 +97,7 @@ CPPFLAGS += $(INCLUDE)
 ASFLAGS  = $(FLAGS)
 #ASFLAGS += -Wa,-gstabs,--listing-cont-lines=100
 ASFLAGS += $(DEP_FLAGS)
-ASFLAGS += $(DEFINE)
+ASFLAGS += $(DEF_OPT)
 ASFLAGS += $(INCLUDE)
 
 ################  Linker Options
@@ -189,7 +191,7 @@ relink: clean_target elf bin lst hex size
 $(GEN_LDS): $(PRJ_TOP)/$(LINK_SCRIPT)
 	$(INFO)
 	$(DIR_CHK)
-	$(ECHO)$(CC) -E -P -x c $(FLAGS) $(DEFINE) $(INCLUDE) $< > $@
+	$(ECHO)$(CC) -E -P -x c $(FLAGS) $(DEF_OPT) $(INCLUDE) $< > $@
 
 $(PRJ_TOP)/$(VER_FILE):
 	$(INFO)
